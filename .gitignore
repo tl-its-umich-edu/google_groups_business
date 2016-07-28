@@ -1,5 +1,6 @@
 var
 .idea
+default.yml
 
 *.gem
 *.rbc
