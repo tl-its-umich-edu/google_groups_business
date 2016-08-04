@@ -100,6 +100,7 @@ This is a test.
       post url, test_email
       puts "add email: last_response #{last_response.pretty_inspect}"
       assert last_response.ok?, 'inserting email'
+      fail "verify when can see the email archive"
     end
 
   end

@@ -31,10 +31,11 @@ require "sinatra/reloader" if development?
 # groups/<group id> (PUT GET DELETE)
 # groups/<group id>/members (PUT POST GET DELETE)
 # groups/<group name>/messages (POST)
-# status (GET)
-# empty
+# change json templates to all use hash template
+# timing of calls
 
 ### TTD DONE
+# status (GET)
 # auto reload
 # automatical templates based on the extension (pattern is known)
 # may want
@@ -65,14 +66,50 @@ require "sinatra/reloader" if development?
 # end
 
 
+# Add logger that can be overridden.  Sample call below.
+#GGBServiceAccount.logger.debug "initalized"
+
+
 # probably want api versioning
 #require 'rack/rest_api_versioning' don't want this as it uses accept or mime only
+
+# generate list of possible yml config file names.
+def get_possible_config_file_names(file_name_prefix='default')
+  names = []
+  # give priority to environment setting.
+  names << ENV['GGB_CONFIG_FILE'] unless ENV['GGB_CONFIG_FILE'].nil?
+  # add standard locations.
+  names.concat ["/usr/local/ctools/app/ctools/tl/home/#{file_name_prefix}.yml", "./#{file_name_prefix}.yml", './default.yml']
+end
+
+def verify_file_is_usable(requested_file)
+  ((File.exists? requested_file) && File.readable?(requested_file)) ? requested_file : nil
+end
+
+# return name of first file in the list that is readable, otherwise log and return nil.
+def get_readable_config_file_name(candidate_files)
+  none_found = lambda {
+    # TODO: replace with logger.
+    puts "FATAL: #{self.class.to_s}:#{__method__}:#{__LINE__}: cannot readable configuration file: in [#{candidate_files}]"
+    nil
+  }
+  candidate_files.detect(none_found) { |f| verify_file_is_usable(f) }
+end
+
+## This must be after any methods it uses.
+configure do
+  config_file = get_readable_config_file_name(get_possible_config_file_names('GGB'))
+  ## TODO: replace with logger
+  puts "use config_file: [#{config_file}]"
+  set :config_file, config_file
+end
 
 helpers do
   def status_data
     {
         :current_time => Time.now.iso8601,
-        :server => Socket.gethostname
+        :server => Socket.gethostname,
+        :ping => to("/status/ping.json")
     }
   end
 
@@ -87,7 +124,7 @@ helpers do
   def run_request(config, use_args)
 
     s = GGBServiceAccount.new()
-    s.configure('default.yml', config[:service_name])
+    s.configure(settings.config_file, config[:service_name])
 
     # run the method
     begin
@@ -102,7 +139,6 @@ helpers do
     # handle any successful results
     config[:handle_result].(result)
   end
-
 
 end
 # set accept header, and reset if have known extension
@@ -203,7 +239,7 @@ put '/groups/:gid' do |gid|
 end
 
 post '/groups/:gid' do |gid|
-  halt 501
+  halt 501,"not implemented"
 end
 
 # get specific group information
@@ -318,6 +354,8 @@ post '/groups/:gid/members' do |gid|
 end
 
 ######### group email archive
+## NOTE: there is currently no API to get messages from
+## a group, only to add messages to a group.
 
 
 # config = {
@@ -453,7 +491,7 @@ data:
  <%= @data %>
 
 @@ hash.json
- <%= @data %>
+ <%= @data.to_json %>
 
 @@ status_ping.html
 <!DOCTYPE html>

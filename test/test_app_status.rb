@@ -49,31 +49,6 @@ class StatusAppGroupsTest < Minitest::Test
     # Do nothing
   end
 
-
-  # # convenience function to create a reasonable group name
-  # def create_group_name(root)
-  #   "#{root}@#{TEST_DOMAIN}"
-  # end
-  #
-  # def new_epoch_time
-  #   sleep 1
-  #   Time.new.to_i
-  # end
-
-
-  # def create_test_group_configuration
-  #   sleep 1
-  #   #group_email = self.class.create_group_name "#{@group_name}_#{Time.now.to_i}"
-  #   group_email = create_group_name "#{@group_name}_#{Time.now.to_i}"
-  #
-  #   ng_test = {
-  #       "email": group_email,
-  #       "name": "#{@group_name}: CPM group insert test",
-  #       "description": "This is a group inserted by CPM testing at: #{Time.new.iso8601}"
-  #   }
-  #   return group_email, ng_test
-  # end
-
   ### verify status page
 
   context "STATUS PAGE" do
@@ -106,13 +81,15 @@ class StatusAppGroupsTest < Minitest::Test
       refute_nil body_as_ruby['server'], "have entry for server"
     end
 
-    should "respond to ping.json" do
+    should "respond correctly to ping.json" do
       get '/status/ping.json'
       assert last_response.ok?, 'requested status/ping'
       assert_equal 'application/json', last_response.header['Content-Type'], "content type is json"
+      body_as_ruby = JSON.parse(last_response.body)
+      refute_nil body_as_ruby['ping'], "have entry for ping"
     end
 
-    should "respond to ping" do
+    should "respond to ping (no suffix)" do
       get '/status/ping'
       assert last_response.ok?, 'requested status/ping'
       assert_equal 'application/json', last_response.header['Content-Type'], "content type is json"
@@ -122,6 +99,14 @@ class StatusAppGroupsTest < Minitest::Test
       get '/status/ping.html'
       assert last_response.ok?, 'requested status/ping'
       assert_match 'text/html', last_response.header['Content-Type'], "content type is html"
+    end
+
+    should "check ping url" do
+      get '/status.json'
+      body_as_ruby = JSON.parse(last_response.body)
+      ping_url = body_as_ruby['ping']
+      assert_match /^http/, ping_url, "ping url starts with http"
+      assert_match %r{status/ping.json$}, ping_url, "is ping url"
     end
 
   end
