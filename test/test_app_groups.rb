@@ -70,40 +70,6 @@ class AppGroupsTest < Minitest::Test
     return group_email, ng_test
   end
 
-  ### verify status page
-
-  context "STATUS PAGE" do
-
-    # Can add additional setup / teardown with each context
-    should "get json format when explicit" do
-      get '/status.json'
-      assert last_response.ok?
-      assert_equal 'application/json', last_response.header['Content-Type'], "content type is json"
-    end
-
-    should "get json format by default" do
-      get '/status'
-      assert last_response.ok?
-      assert_equal 'application/json', last_response.header['Content-Type'], "content type is json"
-    end
-
-    should "get html format when explict" do
-      get '/status.html'
-      assert last_response.ok?
-      assert_match "text/html", last_response.header['Content-Type'], "content type is html"
-    end
-
-    should "get cool status content" do
-      get '/status.json'
-      assert last_response.ok?
-      json_body = JSON.parse(last_response.body)
-      refute_nil json_body, "result should exist"
-      refute_nil json_body['current_time'], "should have entry for time"
-    end
-
-  end
-
-
   ## test top level groups functionallity
   context "GROUPS" do
 
