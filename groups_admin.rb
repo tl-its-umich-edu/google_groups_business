@@ -70,7 +70,10 @@ require "sinatra/reloader" if development?
 
 helpers do
   def status_data
-    {:current_time => Time.now.iso8601}
+    {
+        :current_time => Time.now.iso8601,
+        :server => Socket.gethostname
+    }
   end
 
   def update_accept_header(extension, mime_type)
@@ -111,6 +114,9 @@ before /.*/ do
   update_accept_header 'html', 'text/html'
 end
 
+
+############## status urls
+# basic static status, ping
 get '/status', :provides => [:json, :html] do
   respond_to do |format|
     # setup the data
@@ -118,6 +124,19 @@ get '/status', :provides => [:json, :html] do
     # invoke proper template
     format.json { erb :'status.json' }
     format.html { erb :'status.html' }
+  end
+end
+
+
+#get '/status/ping.?:format?' do |format|
+
+get '/status/ping', :provides => [:json, :html] do
+  #format = 'html' unless (format)
+  respond_to do |format|
+    @data = {:ping => 'ok'}
+    # invoke proper template
+    format.json { erb :'hash.json' }
+    format.html { erb :'status_ping.html' }
   end
 end
 
@@ -298,6 +317,45 @@ post '/groups/:gid/members' do |gid|
   halt 501, "not sensible"
 end
 
+######### group email archive
+
+
+# config = {
+#     :args => args,
+#     :required_args => 3,
+#     :method_symbol => :insert_archive,
+#     :handle_result => Proc.new { |result|
+#       puts "#{__method__}: group: #{args[1]} email: #{args[2]}"
+#       puts "#{__method__}: result: #{result.inspect}"
+#     },
+#     :service_name => 'GROUPS_MIGRATION'
+# }
+#
+# email = get_email_from_file args[2]
+# use_args = [args[1], email]
+#
+# run_request(config, use_args)
+
+post '/groups/:gid/messages' do |gid|
+  request_body = request.body.read
+  puts "request body: #{request_body}"
+
+  config = {
+      :args => [gid, request_body],
+      :method_symbol => :insert_archive,
+      :handle_result => Proc.new { |result| result },
+      :service_name => 'GROUPS_MIGRATION'
+  }
+
+  use_args = [gid, request_body]
+
+  begin
+    run_request(config, use_args)
+  rescue GGBServiceAccountError => ggb_err
+    halt ggb_err.status_code, ggb_err.cause.to_json
+  end
+
+end
 
 ############## group messages
 # groups/<group name>/messages (POST)
@@ -393,3 +451,16 @@ data:
 
 @@ groups.json
  <%= @data %>
+
+@@ hash.json
+ <%= @data %>
+
+@@ status_ping.html
+<!DOCTYPE html>
+<html>
+<body>
+<div style="margin-left:20px;">
+<%= "#{@data[:ping]}" %>
+</div>
+</body>
+</html>
