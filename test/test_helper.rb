@@ -13,6 +13,8 @@ Minitest::Reporters.use! Minitest::Reporters::SpecReporter.new
 require 'shoulda'
 require 'rack/test'
 
+TEST_DOMAIN='discussions-dev.its.umich.edu'
+
 #class TestHelper
 module TestHelper
 
