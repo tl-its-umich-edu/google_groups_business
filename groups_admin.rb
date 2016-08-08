@@ -6,22 +6,26 @@ Bundler.require
 
 require 'sinatra'
 require 'json'
+require 'logging'
 
-#require 'sinatra/respond_with'
+require 'GGB'
+
+require 'sinatra/respond_with'
 #require 'sinatra/contrib/all'
 
 # avoids the tilt autoloading message.
 require 'tilt/erb'
 
 require 'rack/conneg'
-#require "sinatra/reloader" if development?
+require "sinatra/reloader" if development?
+
+#require 'google/apis/admin_directory_v1'
 
 
 ### TTD (not in order of importance)
 # api versioning
 # config / yml
 # html escape
-# auto reload
 # content negotiation
 ## value is returned in json except status is json and html
 # groups/<group id> (PUT GET DELETE)
@@ -68,22 +72,43 @@ helpers do
   def status_data
     {:current_time => Time.now.iso8601}
   end
-end
 
-def update_accept_header(extension,mime_type)
-  if request.url.match(/.#{extension}$/)
-    request.accept.unshift(mime_type)
-    request.path_info = request.path_info.gsub(/.#{extension}$/, '')
+  def update_accept_header(extension, mime_type)
+    if request.url.match(/.#{extension}$/)
+      request.accept.unshift(mime_type)
+      request.path_info = request.path_info.gsub(/.#{extension}$/, '')
+    end
   end
-end
 
+  # Run a specific request
+  def run_request(config, use_args)
+
+    s = GGBServiceAccount.new()
+    s.configure('default.yml', config[:service_name])
+
+    # run the method
+    begin
+      result = s.send(config[:method_symbol], *use_args)
+    rescue GGBServiceAccountError => ggb_err
+      raise ggb_err
+    rescue => exp
+      # just pass exceptions back
+      halt exp.status_code, exp.message
+    end
+
+    # handle any successful results
+    config[:handle_result].(result)
+  end
+
+
+end
 # set accept header, and reset if have known extension
 before /.*/ do
   # default to json
   request.accept.unshift('application/json')
   # set based on extension.
-  update_accept_header 'json','application/json'
-  update_accept_header 'html','text/html'
+  update_accept_header 'json', 'application/json'
+  update_accept_header 'html', 'text/html'
 end
 
 get '/status', :provides => [:json, :html] do
@@ -100,34 +125,180 @@ end
 # groups/<group id> (PUT GET DELETE)
 
 ################ groups ###############
-
+# create group representations
+# input:  https://developers.google.com/admin-sdk/directory/v1/guides/manage-groups
+# output: https://developers.google.com/admin-sdk/directory/v1/reference/groups#resource
 
 # list groups
 ## Return list of ids or list of array/hash [id,url]
 ## put / post must accept (optional) settings
-get '/groups' do
-  "get all groups via group email"
+
+get '/groups/?', :provides => [:json, :html] do
+  respond_to do |format|
+    config = {
+        :args => nil,
+        :method_symbol => :list_groups,
+        :handle_result => Proc.new { |result| result },
+        :service_name => 'ADMIN_DIRECTORY'
+    }
+
+    # get the data
+    @data = run_request(config, [])
+    # format as required
+    format.json { erb :'groups.json' }
+    format.html { erb :'groups.json' }
+  end
 end
 
-# create new group / update existing group
-## must accept settings values
+# Expects the body of the put to contain group email, group name and description.
+# If the gid and the email don't agree then
 put '/groups/:gid' do |gid|
-  "create a group: #{gid}"
+  # assumes that request has not already been read
+  body = request.body.read
+  #verify that the email is not in the body (and add) or is the same.
+
+  config = {
+      :args => nil,
+      :method_symbol => :insert_new_group,
+      :handle_result => Proc.new { |result| result },
+      :service_name => 'ADMIN_DIRECTORY'
+  }
+
+  params2 = {:email => params['email'],
+             :name => params['name'],
+             :description => params['description']}
+
+  unless gid == params[:email]
+    halt 422, "requested id is inconsistent"
+  end
+
+  # put argument in array so it isn't treated as a hash of keyword parameters.
+  #run_request(config, [params2])
+
+  begin
+    run_request(config, [params2])
+  rescue GGBServiceAccountError => ggb_err
+    halt ggb_err.status_code, ggb_err.cause.to_json
+  end
+
+end
+
+post '/groups/:gid' do |gid|
+  halt 501
 end
 
 # get specific group information
 get '/groups/:gid' do |gid|
-  "get one group settings: [#{gid}]"
+
+  config = {
+      :args => gid,
+      :method_symbol => :get_group_info,
+      :handle_result => Proc.new { |result|
+        halt 404, "group not found" unless result
+        result.to_json
+      },
+      :service_name => 'ADMIN_DIRECTORY'
+  }
+
+  begin
+    run_request(config, gid)
+  rescue GGBServiceAccountError => ggb_err
+    halt ggb_err.status_code, ggb_err.cause.to_json
+  end
+
 end
 
 # delete a group
-## deal with members? / do not return existing information
 delete '/groups/:gid' do |gid|
-  "delete group: #{gid}"
+  config = {
+      :args => gid,
+      :method_symbol => :delete_group,
+      :handle_result => Proc.new { |result| result },
+      :service_name => 'ADMIN_DIRECTORY'
+  }
+
+  begin
+    run_request(config, gid)
+  rescue GGBServiceAccountError => ggb_err
+    halt ggb_err.status_code, ggb_err.cause.to_json
+  end
+
 end
 
 ############## group members
 # groups/<group id>/members (PUT POST GET DELETE)
+
+get '/groups/:gid/members' do |gid|
+  config = {
+      :args => gid,
+      :method_symbol => :list_members,
+      :handle_result => Proc.new { |result| result },
+      :service_name => 'ADMIN_DIRECTORY'
+  }
+  begin
+    run_request(config, gid)
+  rescue GGBServiceAccountError => ggb_err
+    halt ggb_err.status_code, ggb_err.cause.to_json
+  end
+end
+
+get '/groups/:gid/members/:uid' do |gid, uid|
+  config = {
+      :args => [gid, uid],
+      :method_symbol => :get_member,
+      :handle_result => Proc.new { |result| result },
+      :service_name => 'ADMIN_DIRECTORY'
+  }
+  begin
+    run_request(config, [gid, uid])
+  rescue GGBServiceAccountError => ggb_err
+    halt ggb_err.status_code, ggb_err.cause.to_json
+  end
+end
+
+put '/groups/:gid/members/:uid' do |gid, uid|
+  role = params[:role] ? params[:role] : 'MEMBER'
+  halt 400, "invalid member role: [#{role}]" unless ['MEMBER', 'OWNER'].include? role
+
+  config = {
+      :args => [gid, uid],
+      :method_symbol => :insert_member,
+      :handle_result => Proc.new { |result| result },
+      :service_name => 'ADMIN_DIRECTORY'
+  }
+
+  use_args = [gid, {'email': uid, 'role': role}]
+
+  begin
+    run_request(config, use_args)
+  rescue GGBServiceAccountError => ggb_err
+    halt ggb_err.status_code, ggb_err.cause.to_json
+  end
+end
+
+#def delete_member group_key, member_key
+delete '/groups/:gid/members/:uid' do |gid, uid|
+  config = {
+      :args => [gid, uid],
+      :method_symbol => :delete_member,
+      :handle_result => Proc.new { |result| result },
+      :service_name => 'ADMIN_DIRECTORY'
+  }
+
+  use_args = [gid, uid]
+
+  begin
+    run_request(config, use_args)
+  rescue GGBServiceAccountError => ggb_err
+    halt ggb_err.status_code, ggb_err.cause.to_json
+  end
+end
+
+post '/groups/:gid/members' do |gid|
+  halt 501, "not sensible"
+end
+
+
 ############## group messages
 # groups/<group name>/messages (POST)
 ####################
@@ -220,3 +391,5 @@ data:
 </body>
 </html>
 
+@@ groups.json
+ <%= @data %>

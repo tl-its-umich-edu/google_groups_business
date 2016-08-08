@@ -118,78 +118,11 @@ class AppGroupsTest < Minitest::Test
       assert_operator body_json['groups'].length, :>, 2, "should have at least 3 groups."
     end
 
-    should "list existing groups (trailing slash)" do
-      get '/groups/'
-      assert last_response.ok?
-      body_json = JSON.parse(last_response.body)
-      assert_operator body_json['groups'].length, :>, 2, "should have at least 3 groups."
-    end
 
-    should "create new group" do
-
-      group_email, ng_test = create_test_group_configuration
-
-      put "/groups/#{group_email}", ng_test
-      assert last_response.ok?
-
-    end
-
-    should "NOT create new group if group id doesn't match" do
-
-      group_email, ng_test = create_test_group_configuration
-
-      put "/groups/#{group_email}.XXX", ng_test
-      refute last_response.ok?, "inconsistant group email"
-
-    end
-
-    should "not create duplicate group" do
-
-      group_email, ng_test = create_test_group_configuration
-
-      put "/groups/#{group_email}", ng_test
-      assert_equal 200, last_response.status
-
-      ## test for duplicate error
-      put "/groups/#{group_email}", ng_test
-      assert_equal 409, last_response.status
-
-    end
-
-    should "create by post should fail" do
-
-      group_email, ng_test = create_test_group_configuration
-
-      post "/groups/#{group_email}", ng_test
-      assert_equal 501, last_response.status, "post not implemented for group create"
-    end
-
-
-    # def group_info(args)
-    #
-    #   config = {
-    #       :args => args,
-    #       :required_args => 2,
-    #       :method_symbol => :get_group_info,
-    #       :handle_result => Proc.new { |result|
-    #         puts "group_info:"
-    #         puts "result.inspect: #{result.inspect}"
-    #         result
-    #       },
-    #       :service_name => 'ADMIN_DIRECTORY'
-    #   }
-    #
-    #   run_request(config, args[1])
-    # end
     should "get group information" do
       get "/groups/#{@eternal_group_email}"
 #      puts "get group info /groups/#{@eternal_group_email} #{last_response.inspect}"
       assert last_response.ok?, "get group info"
-    end
-
-    should "not get group information for bad group" do
-      get "/groups/HippyHappyDays"
-      assert_equal 404, last_response.status, "group does not exist"
     end
 
 
@@ -208,42 +141,27 @@ class AppGroupsTest < Minitest::Test
 
     end
 
-
-    should "not delete group that doesn't exist" do
-
-      # get rid of the group if it exists.
-      delete "/groups/MyNameIsLegend"
-
-      get "/groups/MyNameIsLegend"
-      assert_equal 404, last_response.status, "group must no longer exist"
-
-    end
-
-    should_eventually "update setting information" do
-
-    end
-
   end
 
 
   context "MEMBERS" do
 
-    # should "list all members" do
-    #   url = "/groups/#{@eternal_group_email}/members"
-    #   get url
-    #   assert last_response.ok?, "eternal group always has members"
-    #   response_ruby = JSON.parse(last_response.body)
-    #   assert_operator response_ruby['members'].length, :>, 0, "should have at least 1 member"
-    # end
-    #
-    # should "list member" do
-    #   url = "/groups/#{@eternal_group_email}/members/#{@eternal_member}"
-    #   get url
-    #   assert last_response.ok?, "find eternal member"
-    #   response_ruby = JSON.parse(last_response.body)
-    #   assert_equal 6, response_ruby.length, "proper number of keys in member data"
-    #   assert_match /#{Regexp.escape @eternal_member}/i, response_ruby['email'], "response has correct email"
-    # end
+    should "list all members" do
+      url = "/groups/#{@eternal_group_email}/members"
+      get url
+      assert last_response.ok?, "eternal group always has members"
+      response_ruby = JSON.parse(last_response.body)
+      assert_operator response_ruby['members'].length, :>, 0, "should have at least 1 member"
+    end
+
+    should "list member" do
+      url = "/groups/#{@eternal_group_email}/members/#{@eternal_member}"
+      get url
+      assert last_response.ok?, "find eternal member"
+      response_ruby = JSON.parse(last_response.body)
+      assert_equal 6, response_ruby.length, "proper number of keys in member data"
+      assert_match /#{Regexp.escape @eternal_member}/i, response_ruby['email'], "response has correct email"
+    end
 
     # member = {
     #     'email': @common_fake,
@@ -260,44 +178,44 @@ class AppGroupsTest < Minitest::Test
     # refute_nil member_result, "should insert user #{@common_fake} into #{ETERNAL_GROUP}"
 
 
-    # should "add member: new" do
-    #   new_id = new_epoch_time
-    #
-    #   # create group if it doesn't exist
-    #
-    #   put "/groups/#{@temporary_group_email}"
-    #
-    #   status = last_response.status
-    #   puts "add member: new status code: #{status}"
-    #   assert status == 201 || status == 422, "ensure member test group exists"
-    #
-    #   #use_args = [args[1], {'email': args[2], 'role': args[3]}]
-    #
-    #   url = "/groups/#{@temporary_group_email}/members/GGB-CPM-TEST-MEMBER-#{new_id}@nowhere.edu"
-    #
-    #   puts "add member: new: url: #{url}"
-    #   put url
-    #
-    #   puts "last_response: #{last_response.inspect}"
-    #   assert last_response.ok?, "new member addition"
-    #
-    #
-    #   fail "not yet finished"
-    # end
-    #
-    # should "add member: existing " do
-    #   skip "soon"
-    #   fail "not yet implemented"
-    # end
-    #
-    # should "add member: absurd" do
-    #   skip "soon"
-    #   fail "not yet implemented"
-    # end
-    #
+    should "add member: new" do
+      new_id = new_epoch_time
 
-  #  should_eventually "delete member"
-  #  should_eventually "update member"
+      # create group if it doesn't exist
+
+      put "/groups/#{@temporary_group_email}"
+
+      status = last_response.status
+      puts "add member: new status code: #{status}"
+      assert status == 201 || status == 422, "ensure member test group exists"
+
+      #use_args = [args[1], {'email': args[2], 'role': args[3]}]
+
+      url = "/groups/#{@temporary_group_email}/members/GGB-CPM-TEST-MEMBER-#{new_id}@nowhere.edu"
+
+      puts "add member: new: url: #{url}"
+      put url
+
+      puts "last_response: #{last_response.inspect}"
+      assert last_response.ok?, "new member addition"
+
+
+      fail "not yet finished"
+    end
+
+    should "add member: existing " do
+      skip "soon"
+      fail "not yet implemented"
+    end
+
+    should "add member: absurd" do
+      skip "soon"
+      fail "not yet implemented"
+    end
+
+
+    should_eventually "delete member"
+    should_eventually "update member"
   end
 
   context "archive" do

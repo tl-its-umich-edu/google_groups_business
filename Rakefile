@@ -56,6 +56,15 @@ namespace :server do
     %x[kill $(cat #{VAR_DIR}/pids/thin.pid)]
   end
 
+  desc "Wait 10 seconds"
+  task :wait do
+    sleep 10
+  end
+  
+  
+  desc "Restart the server"
+  task :restart => [:stop, :wait, :start]
+  
 end
 
 ######## Configure tests
