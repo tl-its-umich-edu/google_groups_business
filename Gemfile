@@ -17,7 +17,13 @@ gem 'google-api-client'
 
 #gem "foreman", :path => "/Users/pje/my_foreman_fork"
 #gem "GGB", :path => "/Users/dlhaines/dev/BITBUCKET/ggb"
-gem "GGB", :path => "/Users/dlhaines/dev/GITHUB/dlh-umich.edu/FORKS/google_groups_gem"
+#gem "GGB", :path => "/Users/dlhaines/dev/GITHUB/dlh-umich.edu/FORKS/google_groups_gem"
+
+gem 'GGB', :git => "git@github-dlh:dlhaines/google_groups_gem.git", :branch => 'TLPORTAL-309'
+
+#:git => 'https://github.com/rails/rails.git', :ref => '4aded'
+#:git => 'https://github.com/rails/rails.git', :branch => '2-3-stable'
+#:git => 'https://github.com/rails/rails.git', :tag => 'v2.3.5'
 
 group :development, :test do
   gem 'rack-test'
