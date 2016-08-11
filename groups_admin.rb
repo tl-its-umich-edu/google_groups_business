@@ -8,7 +8,7 @@ require 'sinatra'
 require 'json'
 require 'logging'
 
-require 'GGB'
+require 'ggb'
 
 require 'sinatra/respond_with'
 #require 'sinatra/contrib/all'
