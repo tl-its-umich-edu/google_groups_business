@@ -98,7 +98,7 @@ namespace :test do
     t.libs << "test"
     t.name = "all_files"
     t.description = "test all requests"
-    t.test_files = FileList['**/test_*.rb']
+    t.test_files = FileList['test/test_*.rb']
     t.verbose = true
     t.ruby_opts += ["-W1"]
   end
