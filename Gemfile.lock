@@ -1,9 +1,9 @@
 GIT
   remote: https://github.com/dlhaines/google_groups_gem.git
-  revision: e7d2a515aa07b9c208f910a666c9878bb18632c6
+  revision: c64f3f986031b3eec485ffaa465f09fe05823f8d
   branch: TLCPM-343
   specs:
-    ggb (0.2.0)
+    ggb (0.3.0)
       google-api-client
       googleauth
       httpclient (= 2.8.0)
