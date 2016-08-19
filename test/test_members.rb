@@ -1,31 +1,6 @@
-## Test smallest set of functionality required for the CPM email archive migration
-
-######################
-### <gid> id of google group, assumed to be email address
-### <uid> id of member of group, assumed to be individual email address.
-####
-# GET /groups/ - list groups
-# PUT /groups/<gid> - create new group (PARAMETERS?)
-# DELETE /groups/<gid> - get rid of group (and email)
-
-# GET /groups/<gid>/members - get list of members in the group
-# PUT /groups/<gid>/members/<uid> (PARAMETERS?) - add a member to group
-# POST /groups/<gid>/emailarchive - add email to existing email archive.
-######################
-
 require_relative '../groups_admin'
-
 require_relative 'test_helper'
 
-# require 'minitest'
-# require 'minitest/autorun'
-# require 'minitest/unit'
-# require "minitest/reporters"
-# Minitest::Reporters.use! Minitest::Reporters::SpecReporter.new
-#
-# require 'shoulda'
-# require 'rack/test'
-#
 require 'sinatra'
 
 class MembersAppGroupsTest < Minitest::Test
@@ -38,7 +13,7 @@ class MembersAppGroupsTest < Minitest::Test
     Sinatra::Application
   end
 
-  TEST_DOMAIN='discussions-dev.its.umich.edu'
+  #TEST_DOMAIN='discussions-dev.its.umich.edu'
 
   # Called before every test method runs. Can be used
   # to set up fixture information.

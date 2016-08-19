@@ -1,0 +1,7 @@
+Message-ID: <1471444772.874053-ggb-test-group-insert@discussions-dev.its.umich.edu>
+Date: Wed, 17 Aug 2016 10:39:32 -0400
+To: ggb-test-group-insert@discussions-dev.its.umich.edu
+From: "Dave Haines" <dlhaines@umich.edu>
+Subject: Groups Migration API Test 2016-08-17T10:39:32-04:00
+
+This is a test.
