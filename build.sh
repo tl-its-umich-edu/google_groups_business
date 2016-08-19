@@ -106,9 +106,7 @@ function makeConfigTar {
     (
         ## Go to sub directory so that the tar file doesn't have an extra level of
         ## useless directory.
-        echo "args:"
-        echo "$@"
-        
+
         ## NOTE: need to use the "command" command as rvm
         ## mucks with cd and that kills the script in bash.
         
@@ -190,7 +188,6 @@ function writeEnvironmentVariables {
     local war_prefix=$1
 #    echo "generalize so not studentdash specific"
 
-    echo "args: $#"
     if [ $# -eq 0 ]; then
         echo "must specify war_prefix"
         exit 1
@@ -255,7 +252,7 @@ echo "skipping unit tests"
 makeVersion
 
 # Make, re-name war file, and put in ARTIFACTS directory.
-makeWarFile GGB
+makeWarFile ggb
 
 # make sure the ruby bundle information is available in the artifacts.
 cp ./ruby*bundle* ./ARTIFACTS
@@ -269,14 +266,14 @@ makeConfigTar
 chmod a+r ./ARTIFACTS/*
 
 # write a file with the install variables in it.
-writeEnvironmentVariables GGB >| ./ARTIFACTS/VERSION.Makefile
+writeEnvironmentVariables ggb >| ./ARTIFACTS/VERSION.Makefile
 
 # Display the ARTIFACTS created for confirmation.
 atStep "display artifacts"
 ls -l ./ARTIFACTS
 
 # write the install variables to the log
-writeEnvironmentVariables GGB
+writeEnvironmentVariables ggb
 
 echo "++++++++++++ NOTE: The unresolved specs error message seems to be harmless."
 

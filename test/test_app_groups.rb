@@ -1,8 +1,5 @@
-#require 'rubygems'
-
-#ENV['RACK_ENV'] = 'test'
-# this must be early
 require_relative '../groups_admin'
+require_relative 'test_helper'
 
 require 'minitest'
 require 'minitest/autorun'
@@ -20,6 +17,7 @@ require 'sinatra'
 class AppGroupsTest < Minitest::Test
 
   include Rack::Test::Methods
+  include TestHelper
 
   def app
     Sinatra::Application
@@ -46,36 +44,11 @@ class AppGroupsTest < Minitest::Test
     # Do nothing
   end
 
-
-  # convenience function to create a reasonable group name
-  def create_group_name(root)
-    "#{root}@#{TEST_DOMAIN}"
-  end
-
-  def new_epoch_time
-    sleep 1
-    Time.new.to_i
-  end
-
-
-  def create_test_group_configuration
-    sleep 1
-    group_email = create_group_name "#{@group_name}_#{Time.now.to_i}"
-
-    ng_test = {
-        "email": group_email,
-        "name": "#{@group_name}: CPM group insert test",
-        "description": "This is a group inserted by CPM testing at: #{Time.new.iso8601}"
-    }
-    return group_email, ng_test
-  end
-
   ## test top level groups functionallity
   context "GROUPS" do
 
     setup do
     end
-
 
     should "list existing groups" do
       get '/groups'
@@ -149,7 +122,6 @@ class AppGroupsTest < Minitest::Test
     # end
     should "get group information" do
       get "/groups/#{@eternal_group_email}"
-#      puts "get group info /groups/#{@eternal_group_email} #{last_response.inspect}"
       assert last_response.ok?, "get group info"
     end
 
@@ -189,10 +161,6 @@ class AppGroupsTest < Minitest::Test
 
     end
 
-  end
-
-  context "archive" do
-    should_eventually "add email"
   end
 
 end

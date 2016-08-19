@@ -67,7 +67,7 @@ require "sinatra/reloader" if development?
 
 
 # Add logger that can be overridden.  Sample call below.
-#GGBServiceAccount.logger.debug "initalized"
+GGBServiceAccount.logger.debug "initalized"
 
 
 # probably want api versioning
@@ -144,6 +144,7 @@ end
 # set accept header, and reset if have known extension
 before /.*/ do
   # default to json
+  #GGBServiceAccount.logger.debug "request: #{request.inspect}"
   request.accept.unshift('application/json')
   # set based on extension.
   update_accept_header 'json', 'application/json'
@@ -376,7 +377,7 @@ end
 
 post '/groups/:gid/messages' do |gid|
   request_body = request.body.read
-  puts "request body: #{request_body}"
+  #puts "request body: #{request_body}"
 
   config = {
       :args => [gid, request_body],

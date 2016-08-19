@@ -1,23 +1,6 @@
-#require 'rubygems'
-
-#ENV['RACK_ENV'] = 'test'
-# this must be early
 require_relative '../groups_admin'
 
 require_relative 'test_helper'
-
-# require 'minitest'
-# require 'minitest/autorun'
-# require 'minitest/unit'
-# require "minitest/reporters"
-# Minitest::Reporters.use! Minitest::Reporters::SpecReporter.new
-#
-# require 'shoulda'
-# require 'rack/test'
-# #require 'webmock/minitest'
-#
-# require 'sinatra'
-
 
 class StatusAppGroupsTest < Minitest::Test
 
