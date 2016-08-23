@@ -1,8 +1,8 @@
 #!/bin/bash
 
-CPM_BUILD=151
+#CPM_BUILD=151
 GGB_WAR_NAME=service
-GGB_BUILD=XXX
+#GGB_BUILD=XXX
 
 JENKINS_CPM=http://limpkin.dsc.umich.edu:6660/view/CTools_Project_Migration/job
 MFILE=VERSION.Makefile
