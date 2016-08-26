@@ -1,6 +1,7 @@
 require 'rake/testtask'
 require 'rake/clean'
 
+
 VAR_DIR='./var'
 CLOBBER.include("#{VAR_DIR}/*")
 
@@ -10,15 +11,16 @@ task :TTD do
   GGB_microsevice rake tasks:
  - add tests
  - add docker
+ - add build ?
+ - make jetty port settable
 END_OF_TTD
 end
-  # done
-  # - convert to run GGB microserver
-  # - check that server is not already running
-
+# done
+# - convert to run GGB microserver (mri and jruby)
+# - check that server is not already running (mri)
 
 # default is to test
-task :default => ["test"]
+task :default => [:TTD, "test"]
 
 #### tasks to run default server
 desc "+++ Start and stop test server"
@@ -31,7 +33,7 @@ namespace :server do
 
   task :directories => ["#{VAR_DIR}/pids", "#{VAR_DIR}/log"]
 
-  desc "Starts test version of GGB microservice."
+  desc "Starts mri test version of GGB microservice."
 
   task :start => [:directories] do
 
@@ -50,7 +52,7 @@ namespace :server do
     end
   end
 
-  desc "Stops the server started by server:start"
+  desc "Stops the mri server started by server:start"
   task :stop do
     puts "Killing server with pid #{%x[cat #{VAR_DIR}/pids/thin.pid]}"
     %x[kill $(cat #{VAR_DIR}/pids/thin.pid)]
@@ -60,11 +62,25 @@ namespace :server do
   task :wait do
     sleep 10
   end
-  
-  
-  desc "Restart the server"
+
+
+  desc "Restart the mri server"
   task :restart => [:stop, :wait, :start]
-  
+
+  #Override this by setting the environment variable GGB_CONFIG_FILE.
+  desc "Start executible jetty server war Config file will default to ./test/GGB.yml."
+
+  task :war do
+    files = Rake::FileList["ARTIFACTS/*war"]
+    #GGB_CONFIG_FILE='/Users/dlhaines/dev/GITHUB/dlh-umich.edu/FORKS/google_groups_business/test/GGB.yml'
+    GGB_CONFIG_FILE=ENV['GGB_CONFIG_FILE'] || "#{Dir.pwd}/test/GGB.yml"
+
+    puts "running war file: #{files}"
+    puts "config file is: #{GGB_CONFIG_FILE}"
+
+    %x[GGB_CONFIG_FILE=#{GGB_CONFIG_FILE} java -jar #{files}]
+  end
+
 end
 
 ######## Configure tests
@@ -82,7 +98,7 @@ namespace :test do
     t.libs << "test"
     t.name = "all_files"
     t.description = "test all requests"
-    t.test_files = FileList['**/test_*.rb']
+    t.test_files = FileList['test/test_*.rb']
     t.verbose = true
     t.ruby_opts += ["-W1"]
   end

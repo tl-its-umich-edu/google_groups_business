@@ -8,7 +8,7 @@ require 'sinatra'
 require 'json'
 require 'logging'
 
-require 'GGB'
+require 'ggb'
 
 require 'sinatra/respond_with'
 #require 'sinatra/contrib/all'
@@ -31,10 +31,11 @@ require "sinatra/reloader" if development?
 # groups/<group id> (PUT GET DELETE)
 # groups/<group id>/members (PUT POST GET DELETE)
 # groups/<group name>/messages (POST)
-# status (GET)
-# empty
+# change json templates to all use hash template
+# timing of calls
 
 ### TTD DONE
+# status (GET)
 # auto reload
 # automatical templates based on the extension (pattern is known)
 # may want
@@ -65,12 +66,51 @@ require "sinatra/reloader" if development?
 # end
 
 
+# Add logger that can be overridden.  Sample call below.
+GGBServiceAccount.logger.debug "initalized"
+
+
 # probably want api versioning
 #require 'rack/rest_api_versioning' don't want this as it uses accept or mime only
 
+# generate list of possible yml config file names.
+def get_possible_config_file_names(file_name_prefix='default')
+  names = []
+  # give priority to environment setting.
+  names << ENV['GGB_CONFIG_FILE'] unless ENV['GGB_CONFIG_FILE'].nil?
+  # add standard locations.
+  names.concat ["/usr/local/ctools/app/ctools/tl/home/#{file_name_prefix}.yml", "./#{file_name_prefix}.yml", './default.yml']
+end
+
+def verify_file_is_usable(requested_file)
+  ((File.exists? requested_file) && File.readable?(requested_file)) ? requested_file : nil
+end
+
+# return name of first file in the list that is readable, otherwise log and return nil.
+def get_readable_config_file_name(candidate_files)
+  none_found = lambda {
+    # TODO: replace with logger.
+    puts "FATAL: #{self.class.to_s}:#{__method__}:#{__LINE__}: cannot readable configuration file: in [#{candidate_files}]"
+    nil
+  }
+  candidate_files.detect(none_found) { |f| verify_file_is_usable(f) }
+end
+
+## This must be after any methods it uses.
+configure do
+  config_file = get_readable_config_file_name(get_possible_config_file_names('GGB'))
+  ## TODO: replace with logger
+  puts "use config_file: [#{config_file}]"
+  set :config_file, config_file
+end
+
 helpers do
   def status_data
-    {:current_time => Time.now.iso8601}
+    {
+        :current_time => Time.now.iso8601,
+        :server => Socket.gethostname,
+        :ping => to("/status/ping.json")
+    }
   end
 
   def update_accept_header(extension, mime_type)
@@ -84,7 +124,7 @@ helpers do
   def run_request(config, use_args)
 
     s = GGBServiceAccount.new()
-    s.configure('default.yml', config[:service_name])
+    s.configure(settings.config_file, config[:service_name])
 
     # run the method
     begin
@@ -100,17 +140,20 @@ helpers do
     config[:handle_result].(result)
   end
 
-
 end
 # set accept header, and reset if have known extension
 before /.*/ do
   # default to json
+  #GGBServiceAccount.logger.debug "request: #{request.inspect}"
   request.accept.unshift('application/json')
   # set based on extension.
   update_accept_header 'json', 'application/json'
   update_accept_header 'html', 'text/html'
 end
 
+
+############## status urls
+# basic static status, ping
 get '/status', :provides => [:json, :html] do
   respond_to do |format|
     # setup the data
@@ -118,6 +161,19 @@ get '/status', :provides => [:json, :html] do
     # invoke proper template
     format.json { erb :'status.json' }
     format.html { erb :'status.html' }
+  end
+end
+
+
+#get '/status/ping.?:format?' do |format|
+
+get '/status/ping', :provides => [:json, :html] do
+  #format = 'html' unless (format)
+  respond_to do |format|
+    @data = {:ping => 'ok'}
+    # invoke proper template
+    format.json { erb :'hash.json' }
+    format.html { erb :'status_ping.html' }
   end
 end
 
@@ -184,7 +240,7 @@ put '/groups/:gid' do |gid|
 end
 
 post '/groups/:gid' do |gid|
-  halt 501
+  halt 501,"not implemented"
 end
 
 # get specific group information
@@ -298,6 +354,47 @@ post '/groups/:gid/members' do |gid|
   halt 501, "not sensible"
 end
 
+######### group email archive
+## NOTE: there is currently no API to get messages from
+## a group, only to add messages to a group.
+
+
+# config = {
+#     :args => args,
+#     :required_args => 3,
+#     :method_symbol => :insert_archive,
+#     :handle_result => Proc.new { |result|
+#       puts "#{__method__}: group: #{args[1]} email: #{args[2]}"
+#       puts "#{__method__}: result: #{result.inspect}"
+#     },
+#     :service_name => 'GROUPS_MIGRATION'
+# }
+#
+# email = get_email_from_file args[2]
+# use_args = [args[1], email]
+#
+# run_request(config, use_args)
+
+post '/groups/:gid/messages' do |gid|
+  request_body = request.body.read
+  #puts "request body: #{request_body}"
+
+  config = {
+      :args => [gid, request_body],
+      :method_symbol => :insert_archive,
+      :handle_result => Proc.new { |result| result },
+      :service_name => 'GROUPS_MIGRATION'
+  }
+
+  use_args = [gid, request_body]
+
+  begin
+    run_request(config, use_args)
+  rescue GGBServiceAccountError => ggb_err
+    halt ggb_err.status_code, ggb_err.cause.to_json
+  end
+
+end
 
 ############## group messages
 # groups/<group name>/messages (POST)
@@ -393,3 +490,16 @@ data:
 
 @@ groups.json
  <%= @data %>
+
+@@ hash.json
+ <%= @data.to_json %>
+
+@@ status_ping.html
+<!DOCTYPE html>
+<html>
+<body>
+<div style="margin-left:20px;">
+<%= "#{@data[:ping]}" %>
+</div>
+</body>
+</html>
