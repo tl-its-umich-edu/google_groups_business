@@ -27,7 +27,7 @@ RUN bundle install
 
 
 #ADD ./GGB-CPM-Dev-3bc39c2ec7f7.json .
-#RUN mkdir -p /Users/dlhaines/dev/BITBUCKET/GoogleAPIDemo/discussions-dev
+RUN mkdir -p /Users/dlhaines/dev/BITBUCKET/GoogleAPIDemo/discussions-dev
 
 
 WORKDIR /app
@@ -39,7 +39,9 @@ EXPOSE  9292
 # example
 #CMD cp /usr/share/ocellus/settings.py ./hacks_mbof/; python manage.py migrate;./runAsUser.sh bjensen
 
-CMD ls -l /usr/local/config/default/*; ls -l /usr/local/config/cred/*; rackup --host 0.0.0.0 -p 9292
+## now lists
+#CMD ls -l /usr/local/config/default/*; ls -l /usr/local/config/cred/*; rackup --host 0.0.0.0 -p 9292
+CMD cp /usr/local/config/default/default.yml /app; cp /usr/local/config/cred/ggb-cpm-dev-3bc39c2ec7f7.json /Users/dlhaines/dev/BITBUCKET/GoogleAPIDemo/discussions-dev/GGB-CPM-Dev-3bc39c2ec7f7.json; rackup --host 0.0.0.0 -p 9292
 
 #CMD rake 
 #CMD rackup
