@@ -25,17 +25,21 @@ WORKDIR $APP_HOME
 ADD . $APP_HOME
 RUN bundle install
 
-## Add credentials (will be different in openshift)
-## local: copy in credentials to local directory
-RUN mkdir -p /Users/dlhaines/dev/BITBUCKET/GoogleAPIDemo/discussions-dev
-WORKDIR /Users/dlhaines/dev/BITBUCKET/GoogleAPIDemo/discussions-dev
-# ADD must be relative to the Dockerfile directory
-ADD ./GGB-CPM-Dev-3bc39c2ec7f7.json .
+
+#ADD ./GGB-CPM-Dev-3bc39c2ec7f7.json .
+#RUN mkdir -p /Users/dlhaines/dev/BITBUCKET/GoogleAPIDemo/discussions-dev
+
+
 WORKDIR /app
 
 # expose the port and run the server.
 EXPOSE  9292
-CMD rackup --host 0.0.0.0 -p 9292
+#CMD rackup --host 0.0.0.0 -p 9292
+
+# example
+#CMD cp /usr/share/ocellus/settings.py ./hacks_mbof/; python manage.py migrate;./runAsUser.sh bjensen
+
+CMD ls -l /usr/local/config/default/*; ls -l /usr/local/config/cred/*; rackup --host 0.0.0.0 -p 9292
 
 #CMD rake 
 #CMD rackup
