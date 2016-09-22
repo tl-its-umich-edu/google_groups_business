@@ -1,7 +1,6 @@
 # Encoding: utf-8
 require 'rubygems'
 require 'bundler'
-
 Bundler.require
 
 require 'sinatra'
@@ -18,9 +17,6 @@ require 'tilt/erb'
 
 require 'rack/conneg'
 require "sinatra/reloader" if development?
-
-#require 'google/apis/admin_directory_v1'
-
 
 ### TTD (not in order of importance)
 # api versioning
@@ -96,12 +92,42 @@ def get_readable_config_file_name(candidate_files)
   candidate_files.detect(none_found) { |f| verify_file_is_usable(f) }
 end
 
+
+def configure_ggb_service(config_file)
+  cf_load = YAML.load_file(config_file)
+  ggb_service = [cf_load['CREDENTIALS']['SERVICE_USER'] ,cf_load['CREDENTIALS']['SERVICE_PASSWORD']]
+
+  puts "service: #{ggb_service}"
+  ggb_service
+end
+
 ## This must be after any methods it uses.
 configure do
+
   config_file = get_readable_config_file_name(get_possible_config_file_names('GGB'))
   ## TODO: replace with logger
   puts "use config_file: [#{config_file}]"
   set :config_file, config_file
+  set :ggb_service, configure_ggb_service(config_file)
+  puts "ggb_service B: #{settings.ggb_service}"
+
+end
+
+# Basic auth authentication helpers based on Sinatra FAQ
+helpers do
+  def protected!
+    return if authorized?
+    # If not authorized then return a challenge.
+    headers['WWW-Authenticate'] = 'Basic realm="GGB Restricted Area"'
+    halt 401, "Not authorized\n"
+  end
+
+  def authorized?
+    # check if the user and pw match
+    ggb_service_creds = settings.ggb_service
+    @auth ||= Rack::Auth::Basic::Request.new(request.env)
+    @auth.provided? and @auth.basic? and @auth.credentials and @auth.credentials == [ggb_service_creds[0],ggb_service_creds[1]]
+  end
 end
 
 helpers do
@@ -141,8 +167,32 @@ helpers do
   end
 
 end
-# set accept header, and reset if have known extension
-before /.*/ do
+
+
+##################### routes and processing
+
+############ authentication routes
+# assume requests require authentication
+before do
+  @protected = true
+end
+
+# Exempt some urls from protection
+["/status*","/status/*","/test/unprotected"].each do |path|
+  before path do
+    @protected = false
+  end
+end
+
+# now check protection for every request
+before  do
+  #puts "path protection for #{request.url} is: #{@protected}"
+  protected! if (@protected)
+end
+######## end of authentication route matching.
+
+# setup acceptable content types
+before do
   # default to json
   #GGBServiceAccount.logger.debug "request: #{request.inspect}"
   request.accept.unshift('application/json')
@@ -151,6 +201,18 @@ before /.*/ do
   update_accept_header 'html', 'text/html'
 end
 
+######### URL space for testing authentication ############
+#######################
+get '/test/protected' do
+  puts "in handler /protected: @protected: #{@protected}"
+  "Welcome, authenticated!"
+end
+
+get '/test/unprotected' do
+  puts "in handler /unprotected: @protected: #{@protected}"
+  "Welcome, ignoring authentication!"
+end
+#########################
 
 ############## status urls
 # basic static status, ping
@@ -164,11 +226,7 @@ get '/status', :provides => [:json, :html] do
   end
 end
 
-
-#get '/status/ping.?:format?' do |format|
-
 get '/status/ping', :provides => [:json, :html] do
-  #format = 'html' unless (format)
   respond_to do |format|
     @data = {:ping => 'ok'}
     # invoke proper template
@@ -176,9 +234,7 @@ get '/status/ping', :provides => [:json, :html] do
     format.html { erb :'status_ping.html' }
   end
 end
-
-## value is returned in json except status can return either json or html
-# groups/<group id> (PUT GET DELETE)
+##############
 
 ################ groups ###############
 # create group representations
@@ -240,7 +296,7 @@ put '/groups/:gid' do |gid|
 end
 
 post '/groups/:gid' do |gid|
-  halt 501,"not implemented"
+  halt 501, "not implemented"
 end
 
 # get specific group information
