@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Run curl request against url specified or
+
 # default url.  Use curl basic auth so it can
 # deal with initial rejection challange.
 # check IGNORE_SSL_CERTIFICATES to see if should add -k
