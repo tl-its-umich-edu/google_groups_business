@@ -41,7 +41,9 @@ EXPOSE  9292
 
 ## now lists
 #CMD ls -l /usr/local/config/default/*; ls -l /usr/local/config/cred/*; rackup --host 0.0.0.0 -p 9292
-CMD cp /usr/local/config/default/default.yml /app; cp /usr/local/config/cred/ggb-cpm-dev-3bc39c2ec7f7.json /Users/dlhaines/dev/BITBUCKET/GoogleAPIDemo/discussions-dev/GGB-CPM-Dev-3bc39c2ec7f7.json; rackup --host 0.0.0.0 -p 9292
+#CMD thin start -R config.ru -p 3000
+#CMD cp /usr/local/config/default/default.yml /app; cp /usr/local/config/cred/ggb-cpm-dev-3bc39c2ec7f7.json /Users/dlhaines/dev/BITBUCKET/GoogleAPIDemo/discussions-dev/GGB-CPM-Dev-3bc39c2ec7f7.json; rackup --host 0.0.0.0 -p 9292
+CMD cp /usr/local/config/default/default.yml /app; cp /usr/local/config/cred/ggb-cpm-dev-3bc39c2ec7f7.json /Users/dlhaines/dev/BITBUCKET/GoogleAPIDemo/discussions-dev/GGB-CPM-Dev-3bc39c2ec7f7.json; thin start -R config.ru --address 0.0.0.0 --port 9292
 
 #CMD rake 
 #CMD rackup
