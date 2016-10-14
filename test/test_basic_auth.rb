@@ -34,7 +34,7 @@ class BasicAuthTest < Minitest::Test
     end
 
     should "test_with_proper_credentials" do
-      basic_authorize 'upstart', 'ohcrap'
+      basic_authorize 'admin','admin'
       get '/test/protected'
       assert_equal 200, last_response.status
       assert_equal "Welcome, authenticated!", last_response.body
@@ -50,7 +50,6 @@ class BasicAuthTest < Minitest::Test
     end
 
     should "test_unprotected_with_credentials" do
-      basic_authorize 'upstart', 'ohcrap'
       get '/test/unprotected'
       assert_equal 200, last_response.status
       assert_equal "Welcome, ignoring authentication!", last_response.body

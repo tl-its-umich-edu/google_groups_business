@@ -4,10 +4,7 @@ require 'bundler'
 Bundler.require
 
 require 'sinatra'
-require 'json'
 require 'logging'
-
-require 'ggb'
 
 require 'sinatra/respond_with'
 #require 'sinatra/contrib/all'
@@ -18,53 +15,41 @@ require 'tilt/erb'
 require 'rack/conneg'
 require "sinatra/reloader" if development?
 
+require_relative './stopwatch'
+
 ### TTD (not in order of importance)
 # api versioning
 # config / yml
 # html escape
-# content negotiation
-## value is returned in json except status is json and html
-# groups/<group id> (PUT GET DELETE)
-# groups/<group id>/members (PUT POST GET DELETE)
-# groups/<group name>/messages (POST)
-# change json templates to all use hash template
-# timing of calls
 
-### TTD DONE
-# status (GET)
-# auto reload
-# automatical templates based on the extension (pattern is known)
-# may want
-# sinatra/config_file
-#sinatra/json
-#sinatra/link_header
-# With Sinatra::RespondWith
-# get '/' do
-#   respond_with :index, :name => 'example' do |f|
-#     f.txt { 'just an example' }
-#   end
-# end
-# get '/posts' do
-#   @posts = Post.recent
-#
-#   respond_to do |wants|
-#     wants.html { haml :posts }      # => views/posts.html.haml, also sets content_type to text/html
-#     wants.rss { haml :posts }       # => views/posts.rss.haml, also sets content_type to application/rss+xml
-#     wants.atom { haml :posts }      # => views/posts.atom.haml, also sets content_type to appliation/atom+xml
-#   end
-# end
-# get '/projects', :provides => [:html, :json] do
-#   @projects = Project.projects
-#   respond_to do |format|
-#     format.json { @projects.to_json }
-#     format.html { erb :index }
-#   end
-# end
+#### setting environment by hand for the moment.
+#set :environment, :production
+#set :environment, :development
+set :environment, :test
 
+puts "environment: #{settings.environment}"
 
-# Add logger that can be overridden.  Sample call below.
-GGBServiceAccount.logger.debug "initalized"
+enable :logging
 
+# Setup logger.  May want to have setup in config.ru
+## Sometimes use puts if logger is not available.
+new_logger = Logger.new($stdout)
+new_logger.level = Logger::ERROR
+set :shared_logger, new_logger
+
+configure :production do
+  set :logger_level, Logger::INFO
+  puts "with production settings"
+end
+
+configure :test do
+  set :logger_level, Logger::ERROR
+end
+
+configure :development do
+  set :logger_level, Logger::DEBUG
+  puts "with development settings"
+end
 
 # probably want api versioning
 #require 'rack/rest_api_versioning' don't want this as it uses accept or mime only
@@ -92,24 +77,24 @@ def get_readable_config_file_name(candidate_files)
   candidate_files.detect(none_found) { |f| verify_file_is_usable(f) }
 end
 
-
 def configure_ggb_service(config_file)
+  msg = "#{self.class.to_s}:#{__method__}:#{__LINE__}: config file: #{config_file}"
+  puts "configure_ggb_service: #{msg}"
+  #settings.shared_logger.error(msg)
   cf_load = YAML.load_file(config_file)
-  ggb_service = [cf_load['CREDENTIALS']['SERVICE_USER'] ,cf_load['CREDENTIALS']['SERVICE_PASSWORD']]
-
-  puts "service: #{ggb_service}"
+  ggb_service = [cf_load['CREDENTIALS']['SERVICE_USER'], cf_load['CREDENTIALS']['SERVICE_PASSWORD']]
   ggb_service
 end
 
-## This must be after any methods it uses.
+## This must be after any methods that is uses.
 configure do
 
   config_file = get_readable_config_file_name(get_possible_config_file_names('GGB'))
   ## TODO: replace with logger
-  puts "use config_file: [#{config_file}]"
+  msg = "configure: use config_file: [#{config_file}]"
+  puts msg
   set :config_file, config_file
   set :ggb_service, configure_ggb_service(config_file)
-  puts "ggb_service B: #{settings.ggb_service}"
 
 end
 
@@ -126,7 +111,7 @@ helpers do
     # check if the user and pw match
     ggb_service_creds = settings.ggb_service
     @auth ||= Rack::Auth::Basic::Request.new(request.env)
-    @auth.provided? and @auth.basic? and @auth.credentials and @auth.credentials == [ggb_service_creds[0],ggb_service_creds[1]]
+    @auth.provided? and @auth.basic? and @auth.credentials and @auth.credentials == [ggb_service_creds[0], ggb_service_creds[1]]
   end
 end
 
@@ -148,18 +133,29 @@ helpers do
 
   # Run a specific request
   def run_request(config, use_args)
+    logger.debug "#{self.class.to_s}:#{__method__}:#{__LINE__}: run_request: config: #{config.inspect} use_args: #{use_args.inspect}"
 
+    # Setup passing the logger to GGB
     s = GGBServiceAccount.new()
     s.configure(settings.config_file, config[:service_name])
+    t = settings.shared_logger
+    t.level = settings.logger_level
+    GGBServiceAccount.logger = t
 
     # run the method
     begin
+      startTime = Time.now
       result = s.send(config[:method_symbol], *use_args)
     rescue GGBServiceAccountError => ggb_err
       raise ggb_err
     rescue => exp
       # just pass exceptions back
+      logger.error "#{self.class.to_s}:#{__method__}:#{__LINE__}: run_request: exception: #{exp.inspect}"
       halt exp.status_code, exp.message
+    ensure
+      endTime = Time.now
+      msg = "elapsed time: #{endTime-startTime}: request: #{use_args.inspect}"
+      logger.debug "#{self.class.to_s}:#{__method__}:#{__LINE__}: #{msg}"
     end
 
     # handle any successful results
@@ -171,30 +167,66 @@ end
 
 ##################### routes and processing
 
-############ authentication routes
+# make the logger available for requests
+before { env['rack.logger'] = settings.shared_logger }
+
+############ stopwatch #################
+### Set up single stopwatch for a single request.
+## may need to do non-cookie session.  See http://www.sinatrarb.com/intro.html#Using%20Sessions
+
+## setup stopwatch filters so each request is timed
+before "*" do
+  # Start a request timer.
+  msg = Thread.current.to_s + "\t#{request.request_method}\t#{request.url.to_s}"
+  sd = Stopwatch.new(msg)
+  sd.start
+
+  # Store a stack of stopwatches in case there are recursive calls.
+  session[:thread] = Array.new if session[:thread].nil?
+  session[:thread].push(sd)
+end
+
+### end and print the stopwatch
+after "*" do
+  unless session[:thread].nil?
+    request_sd = session[:thread].pop
+  end
+  ## if redirect from self then the stopwatch doesn't get setup so have no information.
+  if request_sd.nil?
+    logger.info "#{self.class.to_s}:#{__method__}:#{__LINE__}: after: stopwatch: nil"
+  end
+
+  unless request_sd.nil?
+    request_sd.stop
+    logger.info "#{self.class.to_s}:#{__method__}:#{__LINE__}: after: status: #{response.status} stopwatch: #{request_sd.pretty_summary}"
+  end
+  response
+end
+
+
+############ authentication routes ##################
 # assume requests require authentication
 before do
   @protected = true
 end
 
 # Exempt some urls from protection
-["/status*","/status/*","/test/unprotected"].each do |path|
+["/status*", "/status/*", "/test/unprotected"].each do |path|
   before path do
     @protected = false
   end
 end
 
 # now check protection for every request
-before  do
-  #puts "path protection for #{request.url} is: #{@protected}"
+before do
   protected! if (@protected)
 end
-######## end of authentication route matching.
+######## end of authentication route matching. ###############
 
+############## setup content types ####################
 # setup acceptable content types
 before do
   # default to json
-  #GGBServiceAccount.logger.debug "request: #{request.inspect}"
   request.accept.unshift('application/json')
   # set based on extension.
   update_accept_header 'json', 'application/json'
@@ -204,12 +236,10 @@ end
 ######### URL space for testing authentication ############
 #######################
 get '/test/protected' do
-  puts "in handler /protected: @protected: #{@protected}"
   "Welcome, authenticated!"
 end
 
 get '/test/unprotected' do
-  puts "in handler /unprotected: @protected: #{@protected}"
   "Welcome, ignoring authentication!"
 end
 #########################
@@ -414,26 +444,8 @@ end
 ## NOTE: there is currently no API to get messages from
 ## a group, only to add messages to a group.
 
-
-# config = {
-#     :args => args,
-#     :required_args => 3,
-#     :method_symbol => :insert_archive,
-#     :handle_result => Proc.new { |result|
-#       puts "#{__method__}: group: #{args[1]} email: #{args[2]}"
-#       puts "#{__method__}: result: #{result.inspect}"
-#     },
-#     :service_name => 'GROUPS_MIGRATION'
-# }
-#
-# email = get_email_from_file args[2]
-# use_args = [args[1], email]
-#
-# run_request(config, use_args)
-
 post '/groups/:gid/messages' do |gid|
   request_body = request.body.read
-  #puts "request body: #{request_body}"
 
   config = {
       :args => [gid, request_body],
@@ -451,72 +463,6 @@ post '/groups/:gid/messages' do |gid|
   end
 
 end
-
-############## group messages
-# groups/<group name>/messages (POST)
-####################
-
-# require 'mongoid'
-# require 'roar/json/hal'
-# require 'rack/conneg'
-#
-# configure do
-#   Mongoid.load!("config/mongoid.yml", settings.environment)
-#   set :server, :puma # default to puma for performance
-# end
-#
-# use(Rack::Conneg) { |conneg|
-#   conneg.set :accept_all_extensions, false
-#   conneg.set :fallback, :json
-#   conneg.provide([:json])
-# }
-#
-# before do
-#   if negotiated?
-#     content_type negotiated_type
-#   end
-# end
-#
-# class Product
-#   include Mongoid::Document
-#   include Mongoid::Timestamps
-#
-#   field :name, type: String
-# end
-#
-# module ProductRepresenter
-#   include Roar::JSON::HAL
-#
-#   property :name
-#   property :created_at, :writeable=>false
-#
-#   link :self do
-#     "/products/#{id}"
-#   end
-# end
-#
-# get '/products/?' do
-#   products = Product.all.order_by(:created_at => 'desc')
-#   ProductRepresenter.for_collection.prepare(products).to_json
-# end
-#
-# post '/products/?' do
-#   name = params[:name]
-#
-#   if name.nil? or name.empty?
-#     halt 400, {:message=>"name field cannot be empty"}.to_json
-#   end
-#
-#   product = Product.new(:name=>name)
-#   if product.save
-#     [201, product.extend(ProductRepresenter).to_json]
-#   else
-#     [500, {:message=>"Failed to save product"}.to_json]
-#   end
-# end
-
-#    <% @information['urls'].each_value {|url| url.gsub!(/EXT$/,'json')}%>
-#    <%= @information.to_json %>
 
 #################################################################
 

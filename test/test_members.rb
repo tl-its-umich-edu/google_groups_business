@@ -19,12 +19,11 @@ class MembersAppGroupsTest < Minitest::Test
   # to set up fixture information.
   def setup
     @group_name = 'GGB_CPM_TL_test_group'
-    # #@eternal_member = "ggb-cpm-test-eternal-member"
-    # @eternal_member = 'ggb-cpm-test-eternal-member@umich.edu'
     @eternal_group_name = "ggb-cpm-eternal"
     @eternal_group_email = "#{@eternal_group_name}@discussions-dev.its.umich.edu"
     @temporary_group_email = "GGB-CPM-TEST-GROUP-MEMBERS@discussions-dev.its.umich.edu"
-    # #get "/groups/GGB-CPM-TEST-ETERNAL-MEMBER@umich.edu/members"
+
+    basic_authorize 'admin','admin'
   end
 
   # Called after every test method runs. Can be used to tear
@@ -155,6 +154,8 @@ class MembersAppGroupsTest < Minitest::Test
       check_error_response(last_response)
       new = get_members "/groups/#{@temporary_group_email}/members"
       members_new = new.length
+
+      assert_operator(members_new,:<,200,"must be fewer that 200 members in #{@temporary_group_email} to avoid paging confusion")
 
       assert_equal members_before + 1, members_new, "add 1 member"
 

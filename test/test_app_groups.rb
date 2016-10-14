@@ -48,9 +48,11 @@ class AppGroupsTest < Minitest::Test
   context "GROUPS" do
 
     setup do
+      basic_authorize 'admin', 'admin'
     end
 
     should "list existing groups" do
+
       get '/groups'
       assert last_response.ok?
       body_json = JSON.parse(last_response.body)

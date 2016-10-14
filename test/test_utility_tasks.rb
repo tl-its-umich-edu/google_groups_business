@@ -41,19 +41,19 @@ class AppGroupsUtilityTest < Minitest::Test
       should "generate new dlhaines email" do
         group_id = EMAIL_INSERT_TEST_GROUP
         test_email = create_test_email group_id, "Dave Haines", "dlhaines@umich.edu"
-        puts "utility: test_email: "
-        puts ">>>>>>>>"
-        puts "#{test_email}"
-        puts "<<<<<<<<<<<"
+        # puts "utility: test_email: "
+        # puts ">>>>>>>>"
+        # puts "#{test_email}"
+        # puts "<<<<<<<<<<<"
       end
 
       should "generate new pushyami email" do
         group_id = EMAIL_INSERT_TEST_GROUP
         test_email = create_test_email group_id, "Pushyami Gundala", "pushyami@umich.edu"
-        puts "utility: test_email: "
-        puts ">>>>>>>>"
-        puts "#{test_email}"
-        puts "<<<<<<<<<<<"
+        # puts "utility: test_email: "
+        # puts ">>>>>>>>"
+        # puts "#{test_email}"
+        # puts "<<<<<<<<<<<"
       end
 
     end

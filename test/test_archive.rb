@@ -26,7 +26,9 @@ class ArchiveAppGroupsTest < Minitest::Test
     @eternal_group_email = "#{@eternal_group_name}@discussions-dev.its.umich.edu"
     @temporary_group_email = "GGB-CPM-TEST-GROUP-MEMBERS@discussions-dev.its.umich.edu"
     # #get "/groups/GGB-CPM-TEST-ETERNAL-MEMBER@umich.edu/members"
-  end
+    basic_authorize "admin","admin"
+
+end
 
   # Called after every test method runs. Can be used to tear
   # down fixture information.
@@ -43,9 +45,7 @@ class ArchiveAppGroupsTest < Minitest::Test
       #puts "test_email: [#{test_email}]"
       url = "/groups/#{group_id}/messages"
       post url, test_email
-      #puts "add email: last_response #{last_response.pretty_inspect}"
       assert last_response.ok?, 'inserting email'
-      #fail "verify when can see the email archive"
     end
 
   end
