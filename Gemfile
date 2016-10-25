@@ -9,11 +9,15 @@ gem 'warbler'
 
 gem 'rack-conneg', '~> 0.1.5'
 gem 'rack-rest_api_versioning', '~> 0.0.2'
-gem 'thin'
+#gem 'thin'
 
 gem 'google-api-client'
 
 gem 'ggb', :git => "https://github.com/dlhaines/google_groups_gem.git", :branch => 'TLCPM-343-ruby'
+
+group :thin do
+  gem 'thin'
+end
 
 group :development, :test do
   gem 'rack-test'
