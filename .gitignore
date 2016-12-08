@@ -1,8 +1,10 @@
 var
 .idea
 default.yml
+config-runtime
 ARTIFACTS
-
+vendor
+vendor.old
 *.gem
 *.rbc
 /.config
