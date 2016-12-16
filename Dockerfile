@@ -23,7 +23,7 @@ RUN mkdir $APP_HOME
 WORKDIR $APP_HOME
 
 ADD . $APP_HOME
-RUN bundle install
+RUN bundle install --with :thin
 
 
 #ADD ./GGB-CPM-Dev-3bc39c2ec7f7.json .
