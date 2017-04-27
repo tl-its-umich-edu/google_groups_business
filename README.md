@@ -1,7 +1,6 @@
-This is a simple microservices example that uses Ruby + Sinatra to provide a simple Products Service.
-Test GIT CONFIG
+This is a simple microservices example that uses Ruby + Sinatra to provide a limited management API.  It is designed to be easily extensible.
 
-== Docker ==
+## Docker 
 
 To run with local Docker:
 
